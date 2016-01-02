@@ -1,0 +1,10 @@
+{
+    "nick": "pancakesbot",
+    "network": "irc.slashnet.org",
+    "port": 6667,
+    "channels": ["#pancakesbot"],
+    "storage_path": "storage",
+    "plugins_path": "plugins",
+    "plugins": ["admin"],
+    "command_prefix": "!"
+}
