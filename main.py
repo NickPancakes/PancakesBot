@@ -5,11 +5,10 @@ import json
 import logging
 import os
 
-from pancakesbot.core import Core
-from circuits import Manager, Worker
+from pancakesbot.pancakesbot import PancakesBot
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
 
     config = {}
     if os.path.isfile('config.json'):
@@ -23,14 +22,9 @@ if __name__ == "__main__":
     )
     logger = logging.getLogger(__name__)
 
-    manager = Manager()
-
-    Worker(channel="pancakesbot").register(manager)
-    Worker(channel="plugins").register(manager)
-
-    Core(config).register(manager)
+    bot = PancakesBot(**config)
 
     if debug is True:
         from circuits import Debugger
-        Debugger().register(manager)
-    manager.run()
+        Debugger().register(bot)
+    bot.run()

@@ -5,12 +5,13 @@ import logging
 import os
 import sys
 from time import time
+from signal import SIGINT, SIGTERM
 
 from circuits import Component, handler, Timer, Event
 from circuits.net.sockets import TCPClient, connect
 from circuits.protocols.irc import (
     request, Message,
-    IRC, NICK, USER, JOIN,
+    IRC, NICK, USER, JOIN, QUIT,
     RPL_ENDOFMOTD, ERR_NICKNAMEINUSE, ERR_NOMOTD
 )
 
@@ -19,7 +20,7 @@ from pancakesbot.users import UserManager
 from pancakesbot.plugins import PluginManager
 
 
-class IRCBot(Component):
+class PancakesBot(Component):
 
     channel = "pancakesbot"
 
@@ -79,6 +80,12 @@ class IRCBot(Component):
         self.logger.debug("PING: {}".format(timestamp))
         self.fire(request(Message("PING", "LAG{0}".format(timestamp))))
 
+    @handler("signal", channels="*")
+    def signal(self, signo, stack):
+        if signo in (SIGINT, SIGTERM):
+            self.fire(QUIT("Received SIGTERM, terminating..."))
+            self.fire(events.terminate())
+
     #######################################################
     # Event Handlers                                      #
     # These handle events and fire the pancakesbot events #
@@ -131,6 +138,7 @@ class IRCBot(Component):
         self.terminate = True
         self.fire(events.on_exit(), 'plugins')
         self.logger.info("Terminating.")
+        raise SystemExit(0)
 
     @handler("join")
     def _on_join(self, user, channel):
