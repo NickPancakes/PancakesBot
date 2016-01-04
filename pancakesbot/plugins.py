@@ -56,7 +56,7 @@ class PluginManager(Component):
                                              user[3],
                                              command,
                                              plugin))
-                    func(user, target, args[1:])
+                    func(user, target, ' '.join(args[1:]))
 
     def _print_help(self, user, target, args):
         # general or command specific help
@@ -184,7 +184,6 @@ class PluginManager(Component):
             self.logger.error("Plugin \"{}\": "
                               "Failed to clean {}.".format(fqplugin, e))
             raise
-
 
     def query(self):
         return self.loaded
