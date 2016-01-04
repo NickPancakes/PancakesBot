@@ -15,16 +15,18 @@ if __name__ == "__main__":
         with open('config.json') as config_file:
             config.update(json.load(config_file))
 
-    # Set default log level to INFO and get some pretty formatting
+    bot = PancakesBot(**config)
+
+    loglevel = logging.INFO
+    if debug is True:
+        from circuits import Debugger
+        Debugger().register(bot)
+        loglevel = logging.DEBUG
+
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=loglevel,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger(__name__)
 
-    bot = PancakesBot(**config)
-
-    if debug is True:
-        from circuits import Debugger
-        Debugger().register(bot)
     bot.run()
