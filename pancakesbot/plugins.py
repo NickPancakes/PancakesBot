@@ -17,14 +17,11 @@ class PluginManager(Component):
 
     channel = "pancakesbot"
 
-    def init(self, bot, command_prefix, plugin_prefix,
-             init_args=None, init_kwargs=None):
+    def init(self, bot, command_prefix, plugin_prefix):
         self.logger = logging.getLogger(__name__)
         self.bot = bot
         self.command_prefix = command_prefix
         self.plugin_prefix = plugin_prefix
-        self.init_args = init_args or tuple()
-        self.init_kwargs = init_kwargs or dict()
         self.loaded = {}
         self.commands = {}
 
@@ -51,6 +48,7 @@ class PluginManager(Component):
             for plugin in self.commands:
                 commands = self.commands[plugin]
                 if command in commands:
+                    func = commands[command]
                     self.logger.info("User {} ({}) "
                                      "Command \"{}\" "
                                      "Executing Plugin \"{}\""
@@ -58,7 +56,7 @@ class PluginManager(Component):
                                              user[3],
                                              command,
                                              plugin))
-                    commands[command](user, target, ' '.join(args[1:]))
+                    func(user, target, args[1:])
 
     def _print_help(self, user, target, args):
         # general or command specific help
@@ -93,17 +91,28 @@ class PluginManager(Component):
         try:
             fqplugin = "{0:s}.{1:s}".format(self.plugin_prefix, plugin_name)
             if fqplugin in sys.modules:
-                self.logger.info("Plugin \"{}\": "
-                                 "Unloading Before Reload".format(plugin_name))
+                self.logger.error("Plugin \"{}\": Unloading before reload."
+                                  .format(plugin_name))
                 self.unload(plugin_name)
 
             # Import plugin
-            imported = self._safe_import(fqplugin)
+            imported = import_module(fqplugin)
+            self._load_members(fqplugin, imported)
+        except Exception as e:
+            self.logger.error("Plugin \"{}\": "
+                              "Failed to Load: {} ".format(plugin_name,
+                                                           e))
+            raise
+
+    def _load_members(self, fqplugin, imported):
+        try:
             plugin_members = getmembers(imported, self._base_predicate)
+            if not plugin_members:
+                if fqplugin in sys.modules:
+                    del sys.modules[fqplugin]
+                raise TypeError("No members extended from BasePlugin")
             for name, PluginClass in plugin_members:
-                instance = PluginClass(self.bot,
-                                       *self.init_args,
-                                       **self.init_kwargs)
+                instance = PluginClass(self.bot)
                 if hasattr(instance, "register"):
                     instance.register(self)
                     self.logger.info("Plugin \"{}\": "
@@ -127,22 +136,12 @@ class PluginManager(Component):
                 self.logger.info("Plugin \"{}\": "
                                  "Loaded \"{}\"."
                                  .format(fqplugin, name))
-
             return True
         except Exception as e:
+            self._clean_plugin(fqplugin, unload=True)
             self.logger.error("Plugin \"{}\": "
-                              "Failed to Load: {} ".format(plugin_name,
-                                                           e))
-            raise
-
-    def _safe_import(self, module_name):
-        already_imported = sys.modules.copy()
-        try:
-            return import_module(module_name)
-        except Exception:
-            for name in sys.modules.copy():
-                if name not in already_imported:
-                    del (sys.modules[name])
+                              "Failed to members: {} ".format(fqplugin,
+                                                              e))
             raise
 
     def _base_predicate(self, x):
@@ -151,33 +150,41 @@ class PluginManager(Component):
                 return True
         return False
 
-    def unload(self, plugin_name, package=__package__):
+    def unload(self, plugin_name):
         try:
             fqplugin = "{0:s}.{1:s}".format(self.plugin_prefix, plugin_name)
+            self._clean_plugin(fqplugin, True)
+            self.logger.info("Plugin \"{}\": "
+                             "Unload complete.".format(plugin_name))
+            return True
+        except Exception as e:
+            self.logger.error("Plugin \"{}\": "
+                              "Failed to Unload {}.".format(plugin_name, e))
+            raise
+
+    def _clean_plugin(self, fqplugin, unload=False):
+        try:
             instances = self.loaded[fqplugin]
             for instance in instances:
                 if hasattr(instance, "unregister"):
                     instance.unregister()
-                if hasattr(instance, "cleanup"):
-                    instance.cleanup()
-
                 kill(instance)
-                self.logger.info("Plugin \"{}\": "
-                                 "Killed {}.".format(fqplugin,
-                                                     instance))
-            if fqplugin in self.loaded:
-                del self.loaded[fqplugin]
+            del(instances)
             if fqplugin in self.commands:
                 del self.commands[fqplugin]
-            if fqplugin in sys.modules:
-                del sys.modules[fqplugin]
+            if fqplugin in self.loaded:
+                del self.loaded[fqplugin]
+
+            if unload is True:
+                if fqplugin in sys.modules:
+                    del sys.modules[fqplugin]
             self.logger.info("Plugin \"{}\": "
-                             "Unload complete.".format(fqplugin))
-            return True
+                             "Clean complete.".format(fqplugin))
         except Exception as e:
             self.logger.error("Plugin \"{}\": "
-                              "Failed to Unload: {} ".format(plugin_name, e))
+                              "Failed to clean {}.".format(fqplugin, e))
             raise
+
 
     def query(self):
         return self.loaded
