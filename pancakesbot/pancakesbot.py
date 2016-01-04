@@ -57,12 +57,16 @@ class PancakesBot(Component):
             self.storage_path,
             'users-{}.db'.format(self.network)
         )
+        if not os.path.exists(self.storage_path):
+            os.makedirs(self.storage_path)
         self.user_mngr = UserManager(self, user_db_file)
         self.user_mngr.register(self)
 
         # Add plugins directory to path
         self.logger.debug("Initializing plugin manager.")
         self.plugins_path = os.path.abspath(self.plugins_path)
+        if not os.path.exists(self.plugins_path):
+            os.makedirs(self.plugins_path)
         sys.path.append(self.plugins_path)
         # Keeps track of plugins and commands
         self.plugin_mngr = PluginManager(self,
