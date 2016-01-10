@@ -22,9 +22,9 @@ class ExamplePlugin(BasePlugin):
     def test_command(self, user, target, message):
         """Command used to test. Replies with user's ID.
         Usage: test"""
-        self.reply(user, target, "Test Command Fired by {} (ID {})"
+        self.reply(user, target, "Test Fired by {} (ID {})"
                                  .format(user[0], user[3]))
-        self.logger.info("Test Command Fired by {} (ID {}) in {}: {}"
+        self.logger.info("Test Fired by {} (ID {}) in {}: {}"
                          .format(user[0], user[3], target, message))
     test_command.commands = ['test', 't']
 
@@ -34,6 +34,41 @@ class ExamplePlugin(BasePlugin):
     # into the BasePlugin class. Allows you to test each action and serves  #
     # as an example of how to create commands.                              #
     #########################################################################
+
+    def ban_command(self, user, target, message):
+        """Ban's the given nickname from the current channel.
+        Usage: ban nickname"""
+        # self.ban(channel, user):
+        args = message.split(' ')
+        if target.startswith('#'):
+            if len(args) != 1:
+                self.reply(user, target, "Invalid number of arguments")
+            else:
+                user_id = self.bot.user_mngr.id_from_nick(args[0])
+                if user_id:
+                    user = self.bot.user_mngr.user_from_id(user_id)
+                    self.ban(target, user)
+                else:
+                    self.reply(user, target, "Nickname not of a known user.")
+    ban_command.commands = ['ban']
+
+    def deop_command(self, user, target, message):
+        """Remove operator privileges from user in current channel.
+        Usage: deop nickname"""
+        # self.deop(channel, user):
+        args = message.split(' ')
+        if target.startswith('#'):
+            self.deop(target, args[0])
+    deop_command.commands = ['deop']
+
+    def devoice_command(self, user, target, message):
+        """Remove voice privileges from user in current channel.
+        Usage: devoice nickname"""
+        # self.devoice(channel, user):
+        args = message.split(' ')
+        if target.startswith('#'):
+            self.devoice(target, args[0])
+    devoice_command.commands = ['devoice']
 
     def invite_command(self, user, target, message):
         """Invites given nickname to given channel.
@@ -114,6 +149,15 @@ class ExamplePlugin(BasePlugin):
         return
     notice_command.commands = ['notice']
 
+    def op_command(self, user, target, message):
+        """Give operator privileges from user in current channel.
+        Usage: op nickname"""
+        # self.op(channel, user):
+        args = message.split(' ')
+        if target.startswith('#'):
+            self.op(target, args[0])
+    op_command.commands = ['op']
+
     def part_command(self, user, target, message):
         """Parts the given channel (with message if given).
         Usage: part channel [message]"""
@@ -145,6 +189,32 @@ class ExamplePlugin(BasePlugin):
         else:
             self.quit()
     quit_command.commands = ['quit']
+
+    def unban_command(self, user, target, message):
+        """Unban's the given nickname from the current channel.
+        Usage: unban nickname"""
+        # self.unban(channel, user):
+        args = message.split(' ')
+        if target.startswith('#'):
+            if len(args) != 1:
+                self.reply(user, target, "Invalid number of arguments")
+            else:
+                user_id = self.bot.user_mngr.id_from_nick(args[0])
+                if user_id:
+                    user = self.bot.user_mngr.user_from_id(user_id)
+                    self.unban(target, user)
+                else:
+                    self.reply(user, target, "Nickname not of a known user.")
+    unban_command.commands = ['unban']
+
+    def voice_command(self, user, target, message):
+        """Give user voice privileges in current channel.
+        Usage: voice nickname"""
+        # self.voice(channel, user):
+        args = message.split(' ')
+        if target.startswith('#'):
+            self.voice(target, args[0])
+    voice_command.commands = ['voice']
 
     #########################################################################
     # ------------------------------ Events ------------------------------- #

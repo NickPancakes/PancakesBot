@@ -2,8 +2,8 @@
 
 from circuits import Component
 from circuits.protocols.irc import (
-    INVITE, JOIN, KICK, NICK, NOTICE,
-    PART, PRIVMSG, TOPIC, QUIT
+    INVITE, JOIN, KICK, MODE, NICK,
+    NOTICE, PART, PRIVMSG, TOPIC, QUIT
 )
 
 
@@ -14,6 +14,24 @@ class BasePlugin(Component):
     def init(self, bot, *args, **kwargs):
         self.bot = bot
         self.bot_channel = self.bot.channel
+
+    def ban(self, channel, user):
+        if isinstance(user, tuple):
+            self.mode(channel, '+b', "*!*@{}".format(user[2]))
+        else:
+            self.mode(channel, '+b', user)
+
+    def deop(self, channel, user):
+        if isinstance(user, tuple):
+            self.mode(channel, '-o', user[0])
+        else:
+            self.mode(channel, '-o', user)
+
+    def devoice(self, channel, user):
+        if isinstance(user, tuple):
+            self.mode(channel, '-v', user[0])
+        else:
+            self.mode(channel, '-v', user)
 
     def invite(self, nickname, channel):
         self.fire(INVITE(nickname, channel), self.bot_channel)
@@ -29,6 +47,11 @@ class BasePlugin(Component):
             line = "\x01ACTION {}\x01".format(line)
             self.msg(target, line)
 
+    def mode(self, target, mode, *args):
+        args = ' '.join(args)
+        print(args)
+        self.fire(MODE(target, mode, args), self.bot_channel)
+
     def msg(self, target, message):
         for line in message.split('\n'):
             if isinstance(target, tuple):
@@ -43,6 +66,12 @@ class BasePlugin(Component):
     def notice(self, receivers, message):
         for line in message.split('\n'):
             self.fire(NOTICE(receivers, line), self.bot_channel)
+
+    def op(self, channel, user):
+        if isinstance(user, tuple):
+            self.mode(channel, '+o', user[0])
+        else:
+            self.mode(channel, '+o', user)
 
     def part(self, channels, message=None):
         print(message)
@@ -67,5 +96,17 @@ class BasePlugin(Component):
         self.fire(TOPIC(channel, topic), self.bot_channel)
 
     def quit(self, message=None):
-        self.fire(QUIT(message), self.bot_channnel)
+        self.fire(QUIT(message), self.bot_channel)
         raise SystemExit(0)
+
+    def unban(self, channel, user):
+        if isinstance(user, tuple):
+            self.mode(channel, '-b', "*!*@{}".format(user[2]))
+        else:
+            self.mode(channel, '-b', user)
+
+    def voice(self, channel, user):
+        if isinstance(user, tuple):
+            self.mode(channel, '+v', user[0])
+        else:
+            self.mode(channel, '+v', user)
