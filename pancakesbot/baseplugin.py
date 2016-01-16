@@ -6,6 +6,8 @@ from circuits.protocols.irc import (
     NOTICE, PART, PRIVMSG, TOPIC, QUIT
 )
 
+from pancakesbot.events import enqueue_msg
+
 
 class BasePlugin(Component):
 
@@ -15,6 +17,7 @@ class BasePlugin(Component):
         self.bot = bot
         self.bot_channel = self.bot.channel
 
+    # Commands
     def ban(self, channel, user):
         if isinstance(user, tuple):
             self.mode(channel, '+b', "*!*@{}".format(user[2]))
@@ -55,9 +58,9 @@ class BasePlugin(Component):
     def msg(self, target, message):
         for line in message.split('\n'):
             if isinstance(target, tuple):
-                self.fire(PRIVMSG(target[0], line), self.bot_channel)
+                self.fire(enqueue_msg(target[0], line), self.bot_channel)
             else:
-                self.fire(PRIVMSG(target, line), self.bot_channel)
+                self.fire(enqueue_msg(target, line), self.bot_channel)
 
     def nick(self, nickname, hopcount=None):
         self.bot.nick = nickname

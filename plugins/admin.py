@@ -29,6 +29,8 @@ class AdminPlugin(BasePlugin):
                 return self._query(user, target, args)
             elif command == "merge":
                 return self._merge(user, target, args)
+            elif command == "ids":
+                return self._ids(user, target, args)
 
 #####################
 # Plugin Management #
@@ -78,15 +80,27 @@ class AdminPlugin(BasePlugin):
             self.reply(user, target, "Unable to Query plugins. {}"
                                      .format(e))
 
-
-
 #####################
 # User Management #
 #####################
 
+    def _ids(self, user, target, args):
+        ids = self.bot.user_mngr.get_ids()
+        for user_id in ids:
+            user_info = self.bot.user_mngr.user_from_id(user_id[0])
+            self.reply(user, target, "{} : {}!{}@{}"
+                                     .format(user_info[3],
+                                             user_info[0],
+                                             user_info[1],
+                                             user_info[2]))
+
     def _merge(self, user, target, args):
         if len(args) != 2:
             self.reply(user, target, "Merging requires two nicknames.")
+        elif args[0].isdigit() and args[1].isdigit():
+            self.bot.user_mngr.merge_ids(int(args[0]), int(args[1]))
+            self.reply(user, target, "Merging records of {} and {}."
+                                     .format(args[0], args[1]))
         else:
             id0 = self.bot.user_mngr.id_from_nick(args[0])
             id1 = self.bot.user_mngr.id_from_nick(args[1])

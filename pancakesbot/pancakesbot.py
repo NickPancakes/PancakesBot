@@ -11,8 +11,9 @@ from circuits import Component, handler, Timer, Event
 from circuits.net.sockets import TCPClient, connect
 from circuits.protocols.irc import (
     request, Message,
-    IRC, NICK, USER, JOIN, QUIT,
-    RPL_ENDOFMOTD, ERR_NICKNAMEINUSE, ERR_NOMOTD
+    IRC, NICK, USER, JOIN, PRIVMSG, QUIT, WHO,
+    RPL_ENDOFMOTD, RPL_WHOREPLY,
+    ERR_NICKNAMEINUSE, ERR_NOMOTD
 )
 
 import pancakesbot.events as events
@@ -47,6 +48,12 @@ class PancakesBot(Component):
         # Add a logger
         self.logger = logging.getLogger(__name__)
 
+        # Message Queue used by plugins, as to avoid kicks for flooding.
+        self.msg_queue = []
+        # Global mesasge queue timer, only activated when there are messages
+        # to process.
+        self.queue_timer = None
+
         # Add TCPClient and IRC to the system.
         TCPClient(channel=self.channel).register(self)
         IRC(channel=self.channel).register(self)
@@ -78,6 +85,24 @@ class PancakesBot(Component):
 
         # Send Keepalive PING every 5 minutes
         Timer(300.0, Event.create("keepalive"), persist=True).register(self)
+
+    def enqueue_msg(self, target, message):
+        if self.queue_timer:
+            self.msg_queue.append((target, message))
+        else:
+            self.fire(PRIVMSG(target, message))
+            self.queue_timer = Timer(1.0,
+                                     Event.create("process_queue"),
+                                     persist=True).register(self)
+
+    def process_queue(self):
+        if self.msg_queue:
+            msg = self.msg_queue[0]
+            self.fire(PRIVMSG(msg[0], msg[1]))
+            self.msg_queue.pop(0)
+        if not self.msg_queue:
+            self.queue_timer.unregister()
+            self.queue_timer = None
 
     def keepalive(self):
         timestamp = int(time() * 1000)
@@ -146,6 +171,10 @@ class PancakesBot(Component):
 
     @handler("join")
     def _on_join(self, user, channel):
+        # Send a who for channel on join
+        if user[0] == self.nick:
+            self.fire(WHO(channel))
+
         user += (self.user_mngr.get_user_id(user), )
         self.fire(events.on_join(user, channel), 'plugins')
         self.logger.info("JOIN: {} ({}) to {}"
@@ -304,10 +333,15 @@ class PancakesBot(Component):
         self.logger.debug("NUMERIC: {} - {}".format(numeric, ', '.join(args)))
 
         if numeric == ERR_NICKNAMEINUSE:
+            # Change Nick if in use
             newnick = "{0:s}_".format(args[1])
-            print(newnick)
             self.nick = newnick
             self.fire(NICK(newnick))
+        if numeric == RPL_WHOREPLY:
+            print(args)
+            user = (args[5], args[2], args[3])
+            user += (self.user_mngr.get_user_id(user), )
+            print(user)
         elif numeric in (RPL_ENDOFMOTD, ERR_NOMOTD):
             self.fire(events.on_connect(self.network, self.port), 'plugins')
             for chan in self.channels:

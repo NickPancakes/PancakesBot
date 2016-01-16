@@ -9,6 +9,12 @@ class terminate(Event):
     Disconnect, quit and close.
     """
 
+
+class enqueue_msg(Event):
+    """enqueue_msg Event
+    Add message to queue.
+    """
+
 #################
 # Plugin Events #
 #################

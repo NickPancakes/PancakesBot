@@ -187,7 +187,7 @@ class UserManager(Component):
         else:
             # mismatched ids
             # TODO do something here?
-            return None
+            user_id = self._new_user(user)
 
         self._update_nick(user_id, user_nick)
         self._update_vhost(user_id, user_host)
@@ -241,6 +241,14 @@ class UserManager(Component):
             id2 = self.id_from_nick(user2)
 
         return self.merge_ids(id1, id2)
+
+    def get_ids(self):
+        """Returns all user ids"""
+        c = self.db_conn.cursor()
+        c.execute('SELECT id FROM users')
+        ids = c.fetchall()
+        print(ids)
+        return ids
 
     def merge_ids(self, id1, id2):
         if id1 > id2:
